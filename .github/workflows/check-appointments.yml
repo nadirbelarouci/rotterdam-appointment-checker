@@ -28,15 +28,11 @@ jobs:
         run: |
           uv pip install --system -r requirements.txt
       
-      - name: Set up Chrome
+      - name: Set up Chrome and ChromeDriver
         uses: browser-actions/setup-chrome@v1
         with:
           chrome-version: stable
-      
-      - name: Install ChromeDriver
-        uses: nanasess/setup-chromedriver@v2
-        with:
-          chromedriver-version: 'latest'
+          install-chromedriver: true
       
       - name: Run appointment checker
         env:
