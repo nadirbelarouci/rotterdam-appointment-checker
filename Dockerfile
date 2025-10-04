@@ -25,12 +25,13 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the script
+# Copy the scripts
 COPY check_appointments.py .
+COPY run_scheduler.py .
 
 # Set environment variable for headless Chrome
 ENV DISPLAY=:99
 
-# Run the script
-CMD ["python", "check_appointments.py"]
+# Run the scheduler (runs check_appointments.py every 5 minutes)
+CMD ["python", "run_scheduler.py"]
 

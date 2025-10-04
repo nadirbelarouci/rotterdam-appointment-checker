@@ -21,16 +21,15 @@ Go to [Railway.app](https://railway.app/) and sign up with GitHub
 3. Choose `rotterdam-appointment-checker`
 4. Railway will automatically detect the Dockerfile and deploy!
 
-### 3. Configure Cron Schedule
+### 3. How It Works
 
-**Option A: Using Railway Dashboard (Recommended)**
-1. Go to your project settings
-2. Click on **"Cron"** tab
-3. Add schedule: `*/5 * * * *` (every 5 minutes)
-4. Save
+Railway runs the container continuously, and `run_scheduler.py` handles the scheduling internally:
+- Runs the check immediately on startup
+- Waits 5 minutes
+- Runs again
+- Repeats forever
 
-**Option B: Using railway.toml (Already configured)**
-The `railway.toml` file already has cron configured at every 5 minutes.
+No cron configuration needed - it's all built into the container!
 
 ### 4. Add Environment Variable
 
@@ -86,11 +85,13 @@ Make sure the Dockerfile is building correctly. Check the build logs.
 3. Check the logs to see if the script is running
 
 ### Want to change frequency?
-Edit `railway.toml` schedule:
-- Every 5 minutes: `*/5 * * * *`
-- Every 10 minutes: `*/10 * * * *`
-- Every hour: `0 * * * *`
-- Business hours only (9 AM - 11 PM): `*/5 8-22 * * *`
+Edit `run_scheduler.py` line 10:
+- Every 5 minutes: `CHECK_INTERVAL = 300`
+- Every 10 minutes: `CHECK_INTERVAL = 600`
+- Every 15 minutes: `CHECK_INTERVAL = 900`
+- Every 30 minutes: `CHECK_INTERVAL = 1800`
+
+Then push to GitHub - Railway will auto-deploy!
 
 ## Support
 
