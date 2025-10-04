@@ -12,21 +12,32 @@ import urllib.parse
 import datetime
 import os
 
-# Function to send a push notification via ntfy.sh
-def send_notification(message):
+# Function to send a push notification via ntfy.sh with priority
+def send_notification_with_priority(message, title, priority="default"):
     # Get the ntfy topic from environment variable (or use default)
     ntfy_topic = os.environ.get('NTFY_TOPIC', 'rotterdam-appointments-default')
     ntfy_url = f'https://ntfy.sh/{ntfy_topic}'
     
+    # Set tags based on priority
+    if priority == "urgent":
+        tags = "tada,rotating_light,calendar"
+        priority_val = "urgent"
+    else:
+        tags = "clipboard,calendar"
+        priority_val = "default"
+    
     try:
+        # Use query parameters for better emoji support
+        params = {
+            'title': title,
+            'priority': priority_val,
+            'tags': tags
+        }
+        
         response = requests.post(
             ntfy_url,
             data=message.encode('utf-8'),
-            headers={
-                'Title': '🎉 Rotterdam Appointment Available!',
-                'Priority': 'high',
-                'Tags': 'calendar,tada'
-            },
+            params=params,
             timeout=10
         )
         
@@ -119,22 +130,22 @@ try:
     if actual_available_slots:
         # We found actual appointment slots (not waiting list)!
         date_info = "\n".join(actual_available_slots)
-        message = f"🎉 APPOINTMENT SLOTS AVAILABLE! 🎉\n\n{date_info}\n\nCheck immediately:\nhttps://concern.ir.rotterdam.nl/afspraak/maken/product/indienen-naturalisatieverzoek\n\nMessage Sent at: {current_time}"
+        message = f"🎉🎉🎉 APPOINTMENT SLOTS AVAILABLE! 🎉🎉🎉\n\n{date_info}\n\nCheck immediately:\nhttps://concern.ir.rotterdam.nl/afspraak/maken/product/indienen-naturalisatieverzoek\n\nMessage Sent at: {current_time}"
         print(message)
         
-        # Send the notification
-        send_notification(message)
+        # Send the notification with high priority and special title
+        send_notification_with_priority(message, "🎉 SLOTS AVAILABLE!", "urgent")
     else:
         print("No actual appointment slots found (only waiting list or nothing).")
         
-        # Optional: Uncomment to get notifications even when no slots are available
-        # message = f"{message_first_part}\nNo appointment slots available (only waiting list).\nMessage Sent at: {current_time}"
-        # send_notification(message)
+        # Send a simple status notification
+        message = f"📋 Status Check\n\nNo appointment slots available (only waiting list).\n\nChecked at: {current_time}"
+        send_notification_with_priority(message, "📋 Rotterdam Check", "default")
 
 except Exception as e:
-    error_message = f"ERROR: Script failed with exception: {str(e)}\nTime: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    error_message = f"❌ ERROR: Script failed with exception: {str(e)}\nTime: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     print(error_message)
-    send_notification(error_message)
+    send_notification_with_priority(error_message, "❌ Script Error", "high")
 
 finally:
     # Close the WebDriver
