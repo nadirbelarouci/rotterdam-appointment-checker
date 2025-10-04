@@ -68,11 +68,11 @@ try:
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"Script started at: {current_time}")
 
-    time.sleep(3)  # Reduced from 5 to 3 seconds
+    time.sleep(1)  # Minimal initial wait
     
     # Wait for the dropdown to be present and select "2" (value="1" means 2 people)
     print("Waiting for dropdown to be present...")
-    dropdown = WebDriverWait(driver, 8).until(  # Reduced from 10 to 8
+    dropdown = WebDriverWait(driver, 8).until(
         EC.presence_of_element_located((By.ID, "id3"))
     )
     
@@ -81,18 +81,22 @@ try:
     select.select_by_value("1")  # This selects "2" from the dropdown
     print("Selected 2 people from dropdown")
     
-    time.sleep(1)  # Reduced from 2 to 1 second
+    # No sleep needed - WebDriverWait will handle timing
     
     # Wait for the "Verder" button to be clickable and click it
     print("Waiting for 'Verder' button...")
-    verder_button = WebDriverWait(driver, 8).until(  # Reduced from 10 to 8
+    verder_button = WebDriverWait(driver, 8).until(
         EC.element_to_be_clickable((By.ID, "id5"))
     )
     verder_button.click()
     print("Clicked 'Verder' button")
 
-    # Wait for the page to load and the dates to appear
-    time.sleep(3)  # Reduced from 5 to 3 seconds
+    # Wait for the page to load - use WebDriverWait instead of sleep
+    print("Waiting for results to load...")
+    WebDriverWait(driver, 8).until(
+        lambda driver: len(driver.find_elements(By.CLASS_NAME, "list-group-item-action")) > 0 or 
+                      len(driver.find_elements(By.CLASS_NAME, "alert-warning")) > 0
+    )
 
     # Parse the updated HTML content with BeautifulSoup
     soup = BeautifulSoup(driver.page_source, 'html.parser')
