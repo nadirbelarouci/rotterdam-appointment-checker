@@ -11,6 +11,7 @@ import logging
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
+from datetime import timezone
 
 # Configure logging
 logging.basicConfig(
@@ -41,7 +42,7 @@ job_stats = {
 def run_check():
     """Run the appointment checker script"""
     job_stats["total_runs"] += 1
-    job_stats["last_run_time"] = datetime.datetime.now()
+    job_stats["last_run_time"] = datetime.datetime.now(timezone.utc)
     
     try:
         logger.info("="*70)
@@ -96,16 +97,16 @@ def main():
     logger.info(f"📅 Schedule: {CRON_SCHEDULE}")
     logger.info(f"🌍 Timezone: UTC")
     logger.info(f"🐍 Python: {sys.version.split()[0]}")
-    logger.info(f"🕐 Current time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}")
+    logger.info(f"🕐 Current time: {datetime.datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
     
-    # Parse cron expression to show next run
-    trigger = CronTrigger.from_crontab(CRON_SCHEDULE)
+    # Parse cron expression to show next run (use UTC timezone)
+    trigger = CronTrigger.from_crontab(CRON_SCHEDULE, timezone='UTC')
     logger.info("="*70)
     logger.info("✨ Scheduler ready! Waiting for first scheduled run...")
     logger.info("="*70 + "\n")
     
-    # Create scheduler
-    scheduler = BlockingScheduler()
+    # Create scheduler with UTC timezone
+    scheduler = BlockingScheduler(timezone='UTC')
     
     # Add the job with cron expression
     scheduler.add_job(
@@ -125,7 +126,7 @@ def main():
     job = scheduler.get_job('appointment_checker')
     logger.info(f"⏰ Next 5 scheduled runs:")
     next_runs = []
-    test_time = datetime.datetime.now()
+    test_time = datetime.datetime.now(timezone.utc)
     for i in range(5):
         next_run = trigger.get_next_fire_time(next_runs[-1] if next_runs else test_time, test_time)
         if next_run:
