@@ -1,0 +1,12 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "python check_appointments.py"
+restartPolicyType = "ON_FAILURE"
+
+# Cron schedule: every 5 minutes
+[cron]
+schedule = "*/5 * * * *"
+
