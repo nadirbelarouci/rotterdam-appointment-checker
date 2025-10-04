@@ -68,11 +68,11 @@ try:
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"Script started at: {current_time}")
 
-    time.sleep(5) 
+    time.sleep(3)  # Reduced from 5 to 3 seconds
     
     # Wait for the dropdown to be present and select "2" (value="1" means 2 people)
     print("Waiting for dropdown to be present...")
-    dropdown = WebDriverWait(driver, 10).until(
+    dropdown = WebDriverWait(driver, 8).until(  # Reduced from 10 to 8
         EC.presence_of_element_located((By.ID, "id3"))
     )
     
@@ -81,18 +81,18 @@ try:
     select.select_by_value("1")  # This selects "2" from the dropdown
     print("Selected 2 people from dropdown")
     
-    time.sleep(2)
+    time.sleep(1)  # Reduced from 2 to 1 second
     
     # Wait for the "Verder" button to be clickable and click it
     print("Waiting for 'Verder' button...")
-    verder_button = WebDriverWait(driver, 10).until(
+    verder_button = WebDriverWait(driver, 8).until(  # Reduced from 10 to 8
         EC.element_to_be_clickable((By.ID, "id5"))
     )
     verder_button.click()
     print("Clicked 'Verder' button")
 
     # Wait for the page to load and the dates to appear
-    time.sleep(5)
+    time.sleep(3)  # Reduced from 5 to 3 seconds
 
     # Parse the updated HTML content with BeautifulSoup
     soup = BeautifulSoup(driver.page_source, 'html.parser')
