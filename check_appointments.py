@@ -91,12 +91,9 @@ try:
     verder_button.click()
     print("Clicked 'Verder' button")
 
-    # Wait for the page to load - use WebDriverWait instead of sleep
+    # Wait for the page to load - use a simple sleep instead of checking for stale elements
     print("Waiting for results to load...")
-    WebDriverWait(driver, 8).until(
-        lambda driver: len(driver.find_elements(By.CLASS_NAME, "list-group-item-action")) > 0 or 
-                      len(driver.find_elements(By.CLASS_NAME, "alert-warning")) > 0
-    )
+    time.sleep(2)
 
     # Parse the updated HTML content with BeautifulSoup
     soup = BeautifulSoup(driver.page_source, 'html.parser')

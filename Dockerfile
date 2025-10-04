@@ -29,8 +29,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY check_appointments.py .
 COPY run_scheduler.py .
 
-# Set environment variable for headless Chrome
+# Set environment variables
 ENV DISPLAY=:99
+ENV NTFY_TOPIC=rotterdam-appt-nadir-2025
 
 # Run the scheduler (runs check_appointments.py every 5 minutes)
 CMD ["python", "run_scheduler.py"]
