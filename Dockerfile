@@ -32,6 +32,7 @@ COPY run_scheduler.py .
 # Set environment variables
 ENV DISPLAY=:99
 ENV NTFY_TOPIC=rotterdam-appt-nadir-2025
+ENV CRON_SCHEDULE="*/5 * * * *"
 
 # Run the scheduler (runs check_appointments.py every 5 minutes)
 CMD ["python", "run_scheduler.py"]

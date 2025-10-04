@@ -85,13 +85,20 @@ Make sure the Dockerfile is building correctly. Check the build logs.
 3. Check the logs to see if the script is running
 
 ### Want to change frequency?
-Edit `run_scheduler.py` line 10:
-- Every 5 minutes: `CHECK_INTERVAL = 300`
-- Every 10 minutes: `CHECK_INTERVAL = 600`
-- Every 15 minutes: `CHECK_INTERVAL = 900`
-- Every 30 minutes: `CHECK_INTERVAL = 1800`
 
-Then push to GitHub - Railway will auto-deploy!
+Add a `CRON_SCHEDULE` environment variable in Railway (default: `*/5 * * * *`):
+
+**Common patterns:**
+- Every 5 minutes: `*/5 * * * *` (default, 24/7)
+- Every 10 minutes: `*/10 * * * *`
+- Every 5 min, 8 AM - 10 PM: `*/5 8-22 * * *` (saves money!)
+- Every 15 minutes: `*/15 * * * *`
+- Every hour: `0 * * * *`
+- Business hours only: `*/5 9-17 * * 1-5` (9 AM-5 PM, Mon-Fri)
+
+**Format:** `minute hour day month day_of_week`
+
+No code changes needed - just update the env variable in Railway!
 
 ## Support
 
