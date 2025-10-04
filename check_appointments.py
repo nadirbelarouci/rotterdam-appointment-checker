@@ -68,11 +68,11 @@ try:
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"Script started at: {current_time}")
 
-    time.sleep(1)  # Minimal initial wait
+    time.sleep(2)  # Wait for page to fully load
     
     # Wait for the dropdown to be present and select "2" (value="1" means 2 people)
     print("Waiting for dropdown to be present...")
-    dropdown = WebDriverWait(driver, 8).until(
+    dropdown = WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.ID, "id3"))
     )
     
@@ -81,19 +81,22 @@ try:
     select.select_by_value("1")  # This selects "2" from the dropdown
     print("Selected 2 people from dropdown")
     
-    # No sleep needed - WebDriverWait will handle timing
+    # Wait a bit for the page to react to the selection
+    time.sleep(1)
     
     # Wait for the "Verder" button to be clickable and click it
     print("Waiting for 'Verder' button...")
-    verder_button = WebDriverWait(driver, 8).until(
+    # Re-find the button to avoid stale element
+    verder_button = WebDriverWait(driver, 10).until(
         EC.element_to_be_clickable((By.ID, "id5"))
     )
-    verder_button.click()
+    # Use JavaScript click to avoid interception issues
+    driver.execute_script("arguments[0].click();", verder_button)
     print("Clicked 'Verder' button")
 
-    # Wait for the page to load - use a simple sleep instead of checking for stale elements
+    # Wait for results page to load completely
     print("Waiting for results to load...")
-    time.sleep(2)
+    time.sleep(3)
 
     # Parse the updated HTML content with BeautifulSoup
     soup = BeautifulSoup(driver.page_source, 'html.parser')
