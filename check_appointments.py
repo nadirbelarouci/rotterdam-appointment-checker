@@ -12,6 +12,8 @@ import urllib.parse
 import datetime
 import os
 import atexit
+import re
+from dateutil import parser
 
 # Global WebDriver instance (singleton pattern to reuse browser)
 _driver_instance = None
@@ -41,6 +43,49 @@ def get_driver():
         atexit.register(cleanup_driver)
     
     return _driver_instance
+
+def is_date_after_cutoff(date_string, cutoff_date):
+    """
+    Check if a date is after the specified cutoff date.
+    Tries to parse various date formats from the date_string.
+    Returns True if the date is after cutoff, False otherwise or if parsing fails.
+    """
+    try:
+        # Try to parse the date using dateutil parser which handles many formats
+        parsed_date = parser.parse(date_string, dayfirst=True, fuzzy=True)
+        
+        print(f"Parsed date: {parsed_date.strftime('%Y-%m-%d')}, Cutoff: {cutoff_date.strftime('%Y-%m-%d')}")
+        return parsed_date > cutoff_date
+    except Exception as e:
+        print(f"Could not parse date from '{date_string}': {e}")
+        # If we can't parse the date, err on the side of notifying
+        return True
+
+def get_date_filter():
+    """
+    Get the minimum date filter from environment variable.
+    Returns a datetime object if MIN_DATE_FILTER is set, None otherwise.
+    
+    MIN_DATE_FILTER format examples:
+    - "2024-12-21" (ISO format)
+    - "21-12-2024" or "21/12/2024" (day first)
+    - "December 21, 2024"
+    """
+    min_date_str = os.environ.get('MIN_DATE_FILTER', '').strip()
+    
+    if not min_date_str:
+        print("No MIN_DATE_FILTER set - will notify for all available appointments")
+        return None
+    
+    try:
+        # Parse the date from environment variable
+        cutoff_date = parser.parse(min_date_str, dayfirst=True)
+        print(f"Date filter enabled: Only notifying for appointments after {cutoff_date.strftime('%Y-%m-%d')}")
+        return cutoff_date
+    except Exception as e:
+        print(f"Warning: Could not parse MIN_DATE_FILTER '{min_date_str}': {e}")
+        print("Will notify for all available appointments")
+        return None
 
 def cleanup_driver():
     """Clean up the WebDriver instance"""
@@ -100,6 +145,9 @@ def send_notification_with_priority(message, title, priority="default"):
 
 def main():
     """Main function to check appointments"""
+    # Get the date filter (if any)
+    date_cutoff = get_date_filter()
+    
     # Get the reusable driver instance
     try:
         driver = get_driver()
@@ -115,35 +163,88 @@ def main():
         current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"Script started at: {current_time}")
 
-        time.sleep(2)  # Wait for page to fully load
+        time.sleep(3)  # Wait for page to fully load
         
-        # Wait for the dropdown to be present and select "2" (value="1" means 2 people)
-        print("Waiting for dropdown to be present...")
-        dropdown = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "id3"))
-        )
+        # Try to find and interact with the form elements
+        # The form structure may have changed, so we'll try multiple approaches
         
-        # Select the option for 2 people (value="1")
-        select = Select(dropdown)
-        select.select_by_value("1")  # This selects "2" from the dropdown
-        print("Selected 2 people from dropdown")
+        # First, check if we need to select number of people
+        try:
+            print("Looking for number of people dropdown...")
+            # Try to find any select dropdown on the page
+            dropdowns = driver.find_elements(By.TAG_NAME, "select")
+            
+            number_dropdown = None
+            for dropdown in dropdowns:
+                # Look for dropdown that might be for number of people
+                # Check if it has options like "1" or "2" people
+                try:
+                    dropdown_html = dropdown.get_attribute('outerHTML')
+                    if 'aantal' in dropdown_html.lower() or len(dropdown.find_elements(By.TAG_NAME, "option")) <= 5:
+                        number_dropdown = dropdown
+                        print(f"Found potential number dropdown: {dropdown.get_attribute('id')}")
+                        break
+                except:
+                    continue
+            
+            if number_dropdown:
+                # Select the option for 2 people
+                select = Select(number_dropdown)
+                # Try to select by visible text first (more reliable)
+                options = select.options
+                print(f"Available options: {[opt.text for opt in options]}")
+                
+                # Look for option with "2" in it
+                for i, option in enumerate(options):
+                    if "2" in option.text and "persoon" in option.text.lower() or option.get_attribute('value') == "1":
+                        select.select_by_index(i)
+                        print(f"Selected option: {option.text}")
+                        break
+                
+                time.sleep(1)
+            else:
+                print("No number of people dropdown found - form may have changed or not needed")
+        except Exception as e:
+            print(f"Could not find/interact with number dropdown: {e}")
+            print("Continuing anyway - form may have changed")
         
-        # Wait a bit for the page to react to the selection
-        time.sleep(1)
+        # Try to find and click the "Verder" (Continue) button
+        try:
+            print("Looking for submit/continue button...")
+            time.sleep(1)
+            
+            # Try multiple ways to find the button
+            verder_button = None
+            
+            # Method 1: Try by text content
+            buttons = driver.find_elements(By.TAG_NAME, "button")
+            for button in buttons:
+                if "verder" in button.text.lower() or "continue" in button.text.lower():
+                    verder_button = button
+                    print(f"Found button by text: {button.text}")
+                    break
+            
+            # Method 2: Try by type="submit"
+            if not verder_button:
+                submit_buttons = driver.find_elements(By.CSS_SELECTOR, "button[type='submit'], input[type='submit']")
+                if submit_buttons:
+                    verder_button = submit_buttons[0]
+                    print("Found submit button")
+            
+            if verder_button:
+                # Use JavaScript click to avoid interception issues
+                driver.execute_script("arguments[0].click();", verder_button)
+                print("Clicked continue button")
+                time.sleep(3)
+            else:
+                print("No continue button found - may already be on results page")
+        except Exception as e:
+            print(f"Could not find/click continue button: {e}")
+            print("May already be on results page or form changed")
         
-        # Wait for the "Verder" button to be clickable and click it
-        print("Waiting for 'Verder' button...")
-        # Re-find the button to avoid stale element
-        verder_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "id5"))
-        )
-        # Use JavaScript click to avoid interception issues
-        driver.execute_script("arguments[0].click();", verder_button)
-        print("Clicked 'Verder' button")
-
         # Wait for results page to load completely
         print("Waiting for results to load...")
-        time.sleep(3)
+        time.sleep(2)
 
         # Parse the updated HTML content with BeautifulSoup
         soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -161,33 +262,63 @@ def main():
             message_first_part = "Found something."
             print(message_first_part)
 
-        # Filter out "Wachtrij beschikbaar" (waiting list) entries
+        # Filter out "Wachtrij beschikbaar" (waiting list) entries and optionally filter by date
         actual_available_slots = []
         
         if available_dates:
             for date_button in available_dates:
                 if date_button.get('disabled') is None:
                     location = date_button.find('h3').text.strip() if date_button.find('h3') else ""
-                    date_time = date_button.find('p').text.strip() if date_button.find('p') else ""
+                    date_time_elem = date_button.find('p')
+                    date_time = date_time_elem.text.strip() if date_time_elem else ""
+                    
+                    # Clean up the date/time text (remove "from" prefix if present)
+                    date_time = date_time.replace('from ', '').replace('vanaf ', '').strip()
+                    
+                    print(f"Found slot: {location} - {date_time}")
                     
                     # Skip if it's a waiting list entry
                     if "Wachtrij beschikbaar" in date_time or "wachtrij" in date_time.lower():
-                        print(f"Skipping waiting list entry: {location} - {date_time}")
+                        print(f"  -> Skipping: waiting list entry")
                         continue
                     
-                    # This is an actual available slot!
+                    # Skip if no actual date/time found
+                    if not date_time or len(date_time) < 5:
+                        print(f"  -> Skipping: no valid date/time")
+                        continue
+                    
+                    # Check if the date is after cutoff (only if cutoff is set)
+                    if date_cutoff is not None:
+                        if not is_date_after_cutoff(date_time, date_cutoff):
+                            print(f"  -> Skipping: before cutoff date")
+                            continue
+                    
+                    # This is an actual available slot (and after cutoff if filter is set)!
+                    print(f"  -> Adding to available slots!")
                     actual_available_slots.append(f"{location}: {date_time}")
 
         if actual_available_slots:
-            # We found actual appointment slots (not waiting list)!
+            # We found actual appointment slots!
             date_info = "\n".join(actual_available_slots)
-            message = f"🎉🎉🎉 APPOINTMENT SLOTS AVAILABLE! 🎉🎉🎉\n\n{date_info}\n\nCheck immediately:\nhttps://concern.ir.rotterdam.nl/afspraak/maken/product/indienen-naturalisatieverzoek\n\nMessage Sent at: {current_time}"
+            
+            # Create message with optional date filter info
+            if date_cutoff:
+                filter_msg = f" (After {date_cutoff.strftime('%B %d, %Y')})"
+                title_filter = f" (After {date_cutoff.strftime('%b %d')})"
+            else:
+                filter_msg = ""
+                title_filter = ""
+            
+            message = f"🎉🎉🎉 APPOINTMENT SLOTS AVAILABLE{filter_msg}! 🎉🎉🎉\n\n{date_info}\n\nCheck immediately:\nhttps://concern.ir.rotterdam.nl/afspraak/maken/product/indienen-naturalisatieverzoek\n\nMessage Sent at: {current_time}"
             print(message)
             
             # Send the notification with high priority and special title
-            send_notification_with_priority(message, "🎉 SLOTS AVAILABLE!", "urgent")
+            send_notification_with_priority(message, f"🎉 SLOTS AVAILABLE{title_filter}!", "urgent")
         else:
-            print("No actual appointment slots found (only waiting list or nothing).")
+            if date_cutoff:
+                print(f"No appointment slots found after {date_cutoff.strftime('%Y-%m-%d')}.")
+            else:
+                print("No actual appointment slots found (only waiting list or nothing).")
             print(f"Check completed at: {current_time} - No notification sent")
 
     except Exception as e:
