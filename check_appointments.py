@@ -176,13 +176,15 @@ def main():
             
             number_dropdown = None
             for dropdown in dropdowns:
-                # Look for dropdown that might be for number of people
-                # Check if it has options like "1" or "2" people
                 try:
+                    dropdown_name = dropdown.get_attribute('name') or ''
+                    dropdown_id = dropdown.get_attribute('id') or ''
+                    if dropdown_name in ('taal', 'sortering') or dropdown_id in ('id2', 'ida'):
+                        continue
                     dropdown_html = dropdown.get_attribute('outerHTML')
                     if 'aantal' in dropdown_html.lower() or len(dropdown.find_elements(By.TAG_NAME, "option")) <= 5:
                         number_dropdown = dropdown
-                        print(f"Found potential number dropdown: {dropdown.get_attribute('id')}")
+                        print(f"Found potential number dropdown: {dropdown_id}")
                         break
                 except:
                     continue
