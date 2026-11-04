@@ -116,6 +116,9 @@ def send_notification_with_priority(message, title, priority="default"):
     if priority == "urgent":
         tags = "tada,rotating_light,calendar"
         priority_val = "urgent"
+    elif priority == "high":
+        tags = "x,warning"
+        priority_val = "high"
     else:
         tags = "clipboard,calendar"
         priority_val = "default"
@@ -254,8 +257,26 @@ def main():
         # Look for all buttons with class 'list-group-item-action' and not disabled
         available_dates = soup.find_all('button', class_='list-group-item-action')
 
-        # Check for alert warning (no dates available)
-        alert_no_dates = soup.find_all('div', class_='alert-warning')
+        # Check for alert warning (no dates available). Ignore the "Laden..."
+        # loading spinner, which the first form page also renders as alert-warning.
+        alert_no_dates = [
+            alert for alert in soup.find_all('div', class_='alert-warning')
+            if 'laden' not in alert.get_text(" ", strip=True).lower()
+        ]
+
+        # Fail loudly when the results page doesn't look as expected, so a site
+        # change shows up as an error push instead of "no slots" on every run.
+        page_title = soup.title.get_text(strip=True) if soup.title else "?"
+        if not available_dates and not alert_no_dates:
+            raise RuntimeError(
+                f"Parsing failed: no location buttons and no 'no dates' alert on results page "
+                f"(title: '{page_title}', url: {driver.current_url}). Site layout may have changed."
+            )
+        if available_dates and all(not b.find('h3') or not b.find('p') for b in available_dates):
+            raise RuntimeError(
+                f"Parsing failed: {len(available_dates)} location button(s) found but none have the "
+                f"expected <h3> location / <p> date layout (title: '{page_title}'). Site layout may have changed."
+            )
 
         if alert_no_dates:
             message_first_part = "No available dates alert found."
