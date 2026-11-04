@@ -12,6 +12,8 @@ on:
 jobs:
   check-appointments:
     runs-on: ubuntu-latest
+    # Backstop so a stuck run never overlaps the next 10-minute trigger
+    timeout-minutes: 8
 
     steps:
       - name: Checkout code
@@ -52,6 +54,9 @@ jobs:
           uv pip install --system -r requirements.txt
       
       - name: Run appointment checker
+        # Step timeout counts as a failure (a job timeout is a cancel), so the
+        # ntfy "Notify on failure" step still fires if Chrome or the page hangs
+        timeout-minutes: 6
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
