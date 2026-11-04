@@ -1,17 +1,34 @@
 name: Check Rotterdam Appointments
 
 on:
-  # Triggered every 5 minutes by cron-job.org via the workflow_dispatch API
+  # Triggered on a schedule by cron-job.org via the workflow_dispatch API
   workflow_dispatch:
+    inputs:
+      test_notification:
+        description: Send a test push to the NTFY_TOPIC secret
+        type: boolean
+        default: false
 
 jobs:
   check-appointments:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
+      - name: Send test notification
+        if: ${{ inputs.test_notification }}
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl -sS --fail -X POST "https://ntfy.sh/${NTFY_TOPIC}" \
+            -H "Title: Rotterdam checker test" \
+            -H "Tags: white_check_mark,calendar" \
+            -H "Click: ${RUN_URL}" \
+            -d "Test push from GitHub Actions via the NTFY_TOPIC secret. Real alerts will arrive here."
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
