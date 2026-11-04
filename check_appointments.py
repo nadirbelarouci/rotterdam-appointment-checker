@@ -18,6 +18,16 @@ from dateutil import parser
 # Global WebDriver instance (singleton pattern to reuse browser)
 _driver_instance = None
 
+BOOKING_URL = "https://concern.ir.rotterdam.nl/afspraak/maken/product/indienen-naturalisatieverzoek"
+
+
+def github_run_url():
+    """Link to the current GitHub Actions run, or None when running locally."""
+    server = os.environ.get("GITHUB_SERVER_URL")
+    repo = os.environ.get("GITHUB_REPOSITORY")
+    run_id = os.environ.get("GITHUB_RUN_ID")
+    return f"{server}/{repo}/actions/runs/{run_id}" if server and repo and run_id else None
+
 def get_driver():
     """Get or create a singleton WebDriver instance"""
     global _driver_instance
@@ -122,13 +132,26 @@ def send_notification_with_priority(message, title, priority="default"):
     else:
         tags = "clipboard,calendar"
         priority_val = "default"
-    
+
+    # Tapping the notification opens the booking page; errors open the run
+    # logs instead (when on GitHub Actions) and keep a booking-page button.
+    booking_action = f"view, Open booking page, {BOOKING_URL}"
+    run_url = github_run_url()
+    if priority == "high" and run_url:
+        click_url = run_url
+        actions = f"view, Open run logs, {run_url}; {booking_action}"
+    else:
+        click_url = BOOKING_URL
+        actions = booking_action
+
     try:
         # Use query parameters for better emoji support
         params = {
             'title': title,
             'priority': priority_val,
-            'tags': tags
+            'tags': tags,
+            'click': click_url,
+            'actions': actions,
         }
         
         response = requests.post(
@@ -159,7 +182,7 @@ def main():
         driver = reset_driver()
     
     # Open the URL
-    driver.get("https://concern.ir.rotterdam.nl/afspraak/maken/product/indienen-naturalisatieverzoek") 
+    driver.get(BOOKING_URL) 
 
     try:
         # Get the current date and time
@@ -332,7 +355,7 @@ def main():
                 filter_msg = ""
                 title_filter = ""
             
-            message = f"🎉🎉🎉 APPOINTMENT SLOTS AVAILABLE{filter_msg}! 🎉🎉🎉\n\n{date_info}\n\nCheck immediately:\nhttps://concern.ir.rotterdam.nl/afspraak/maken/product/indienen-naturalisatieverzoek\n\nMessage Sent at: {current_time}"
+            message = f"🎉🎉🎉 APPOINTMENT SLOTS AVAILABLE{filter_msg}! 🎉🎉🎉\n\n{date_info}\n\nCheck immediately:\n{BOOKING_URL}\n\nMessage Sent at: {current_time}"
             print(message)
             
             # Send the notification with high priority and special title
